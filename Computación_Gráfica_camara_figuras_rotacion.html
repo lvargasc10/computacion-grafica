@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<head>
+    <title> Computación Gráfica - Mabel Vargas </title>
+</head>
+
+<body onload="main();">
+    <canvas id="canvas" width="1000" height="950"></canvas>
+    <script>
+
+        "--------------------------------------CANVAS------------------------------------------------------------------"
+
+        var contexto = canvas.getContext('2d');
+        canvas.style = "position: absolute; top: 0px; left: 0px; right: 0px; bottom: 0px; margin: auto; border:1px solid black";
+
+        //Función para normalizar.
+        function normalizar(number) {
+            return Math.floor(number * 150 + canvas.height / 2);
+        }
+
+        "--------------------------------------TRAZADO FIGURAS----------------------------------------------------------"
+
+        //Método para aplicar color al trazo.
+        function pintarPixel(contexto, x, y) {
+            contexto.fillStyle = '#000';
+            contexto.fillRect(x, y, 1, 1);
+        }
+        //Función de Bresenham.
+        function lineaBresenham(x0, y0, x1, y1) {
+            var dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+            var dy = Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+            var err = (dx > dy ? dx : -dy) / 2;
+            while (true) {
+                pintarPixel(contexto, x0, y0);
+                if (x0 === x1 && y0 === y1) break;
+                var e2 = err;
+                if (e2 > -dx) { err -= dy; x0 += sx; }
+                if (e2 < dy) { err += dx; y0 += sy; }
+            }
+        }
+
+        //Función para dibujar los triangulos.
+        function dibujarTriangulos(vertices, indices) {
+
+            for (i = 0; i < indices.length; i += 3) {
+                var x0 = normalizar(vertices[indices[i] * 3]);
+                var y0 = normalizar(-vertices[indices[i] * 3 + 1]);
+                var x1 = normalizar(vertices[indices[i + 1] * 3]);
+                var y1 = normalizar(-vertices[indices[i + 1] * 3 + 1]);//revés
+                var x2 = normalizar(vertices[indices[i + 2] * 3]);
+                var y2 = normalizar(-vertices[indices[i + 2] * 3 + 1]);
+
+                lineaBresenham(x0, y0, x1, y1);
+                lineaBresenham(x0, y0, x2, y2);
+                lineaBresenham(x1, y1, x2, y2);
+            }
+        }
+
+        //Función pintar puntos.        
+        function pintarPuntosMatriz(matriz) {
+            for (i = 0; i < matriz.length - 1; i++) {
+                p1 = normalizar(matriz[i][0]);
+                p2 = normalizar(matriz[i][1]);
+                p3 = normalizar(matriz[i + 1][0]);
+                p4 = normalizar(matriz[i + 1][1]);
+                lineaBresenham(p1, p2, p3, p4);
+            }
+        }
+
+        "--------------------------------------PRIMITIVAS GRÁFICAS 2D Y 3D-----------------------------------------------------------"
+
+        //Función dibujar circunferencia.
+        function dibujarCircunferencia(segmentos) {
+            var vertices = [];
+            var indices = [];
+            for (var i = 0; i < segmentos; i++) {
+                vertices.push(Math.cos(2 * Math.PI * i / segmentos));
+                vertices.push(Math.sin(2 * Math.PI * i / segmentos));
+                vertices.push(0.0);
+            }
+            vertices.push(0); vertices.push(0); vertices.push(0);
+            for (var i = 0; i < segmentos; i++) {
+                indices.push(segmentos);
+                indices.push(i);
+                indices.push((i + 1) % segmentos);
+            }
+            return {vertices,indices};
+        }
+
+        //Función dibujar cono.
+        function dibujarCono(segmentos) {
+            var vertices = [];
+            var indices = [];
+            for (var i = 0; i < segmentos; i++) {
+                vertices.push(Math.cos(2 * Math.PI * i / segmentos));
+                vertices.push(1.0);
+                vertices.push(Math.sin(2 * Math.PI * i / segmentos));
+            }
+            vertices.push(0); vertices.push(1.0); vertices.push(0);
+            vertices.push(0); vertices.push(-1.0); vertices.push(0);
+            for (var i = 0; i < segmentos; i++) {
+                indices.push(segmentos);
+                indices.push(i);
+                indices.push((i + 1) % segmentos);
+
+                indices.push(segmentos + 1);
+                indices.push(i);
+                indices.push((i + 1) % segmentos);
+            }
+            return {vertices,indices};
+        }
+
+        //Función dibujar cubo.
+        function dibujarCubo() {
+            vertices = [-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1];
+            indices = [0, 1, 2, 0, 2, 3, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7];
+            return { vertices, indices };
+        }
+        //Función dibujar Plano.
+        function dibujarPlano(segmentos) {
+            var vertices = [], indices = [];
+            for (i = 0; i <= segmentos; i++) {
+                for (j = 0; j <= segmentos; j++) {
+                    vertices.push(j / segmentos * 2 - 1);
+                    vertices.push(i / segmentos * 2 - 1);
+                    vertices.push(0);
+                }
+            }
+            for (i = 0; i < segmentos; i++) {
+                for (j = 0; j < segmentos; j++) {
+                    indices.push(i * (segmentos + 1) + j);
+                    indices.push((i + 1) * (segmentos + 1) + j + 1);
+                    indices.push((i + 1) * (segmentos + 1) + j);
+                    indices.push(i * (segmentos + 1) + j);
+                    indices.push(i * (segmentos + 1) + j + 1);
+                    indices.push((i + 1) * (segmentos + 1) + j + 1);
+                }
+            }
+            return {vertices,indices};
+        }
+
+        //Función dibujar esfera        
+        function dibujarEsfera(paralelo, meridiano) {
+            var vertices=[],indices=[];
+            for (i=0;i<= paralelo; i++) {
+                for (j=0;j<meridiano;j++) {
+                    beta=(Math.PI/paralelo)* i;
+                    alfa=(2*Math.PI/meridiano)*j;
+                    vertices.push(Math.cos(alfa)*Math.sin(beta));
+                    vertices.push(Math.cos(beta));
+                    vertices.push(Math.sin(alfa) * Math.sin(beta));
+                }
+            }
+            for (i=0;i<paralelo;i++) {
+                for (j=0;j<meridiano;j++) {
+                    indices.push(i*meridiano+j);
+                    indices.push((i+1)*meridiano+(j+1)%meridiano);
+                    indices.push((i+1)*meridiano+j);
+                    indices.push(i*meridiano+j);
+                    indices.push(i*meridiano+(j+1)%meridiano);
+                    indices.push((i+1)*meridiano+(j+1)%meridiano);
+                }
+            }
+            return {vertices,indices};
+        }
+
+        "--------------------------------------OPERACIONES MATRICES-----------------------------------------------------------"
+
+        //Función matriz de puntos.        
+        function verticesMatrizPuntos(vertices) {
+            var matriz = [];
+            for (i = 0; i < vertices.length / 3; i++) {
+                matriz[i] = [];
+                matriz[i].push(vertices[3 * i]);
+                matriz[i].push(vertices[3 * i + 1]);
+                matriz[i].push(vertices[3 * i + 2]);
+                matriz[i].push(vertices[1]);
+            }
+            return matriz;
+        }
+
+        //Función arreglo de vertices.             
+        function matrizPuntosVertices(matriz) {
+            vertices = [];
+            for (i = 0; i < matriz.length; i++) {
+                for (j = 0; j < matriz[0].length - 1; j++) {
+                    vertices.push(matriz[i][j]);
+                }
+            }
+            return vertices;
+        }
+
+        //Función vector normal.
+        function vectorNormal(arregloCoordenadas) {
+            contador = 0;
+            for (i = 0; i < arregloCoordenadas.length; i++) {
+                contador += Math.pow(arregloCoordenadas[i], 2);
+            }
+            return Math.sqrt(contador);
+        }
+        //Función producto cruz.
+        function productoCruz(vector1, vector2) {
+            return [vector1[1] * vector2[2] - vector1[2] * vector2[1],
+            vector1[2] * vector2[0] - vector1[0] * vector2[2],
+            vector1[0] * vector2[1] - vector1[1] * vector2[0]];
+        }
+
+        //Función producto punto.
+        function productoPunto(primeraMatriz, segundaMatriz) {
+            var resultado = new Array(primeraMatriz.length);
+            for (i = 0; i < resultado.length; i++) {
+                resultado[i] = new Array(segundaMatriz[0].length).fill(0);
+                for (j = 0; j < resultado.length; j++) {
+                    for (k = 0; k < primeraMatriz[0].length; k++) {
+                        resultado[i][j] += primeraMatriz[i][k] * segundaMatriz[k][j];
+                    }
+                }
+            }
+            var punto = new Array();
+            for (i = 0; i < resultado.length; i++) {
+                punto[i] = new Array();
+                for (j = 0; j < 4; j++) {
+                    if (resultado[i][j] != NaN) {
+                        punto[i].push(resultado[i][j]);
+                    }
+                }
+            }
+            return punto;
+        }
+
+        //Función transponer la matriz.
+        function transponerMatriz(matriz) {
+            return matriz[0].map((columna, i) => matriz.map(fila => fila[i]));
+        }
+
+        //Función traslación de la matriz.
+        function traslacion(dx, dy, dz) {
+            return transponerMatriz([[1, 0, 0, dx],
+            [0, 1, 0, dy],
+            [0, 0, 1, dz],
+            [0, 0, 0, 1]]);
+        }
+
+        //Función rotación matriz sobre eje X.
+        function rotacionX(angulo) {
+            return transponerMatriz([[1, 0, 0, 0],
+            [0, Math.cos(angulo), -Math.sin(angulo), 0],
+            [0, Math.sin(angulo), Math.cos(angulo), 0],
+            [0, 0, 0, 1]]);
+        }
+
+        //Función rotación matriz sobre eje Y.
+        function rotacionY(angulo) {
+            return transponerMatriz([[Math.cos(angulo), 0, -Math.sin(angulo), 0],
+            [0, 1, 0, 0], [Math.sin(angulo), 0, Math.cos(angulo), 0],
+            [0, 0, 0, 1]]);
+        }
+
+        //Función rotación de matriz según el ángulo.
+        function rotacion(angulo) {
+            return transponerMatriz([[Math.cos(angulo),
+            -Math.sin(angulo), 0, 0],
+            [Math.sin(angulo), Math.cos(angulo), 0, 0],
+            [0, 0, 1, 0], [0, 0, 0, 1]]);
+        }
+
+        //Función matriz escalada.        
+        function escalaMatriz(escalaX, escalaY, escalaZ) {
+            return transponerMatriz([[escalaX, 0, 0, 0],
+            [0, escalaY, 0, 0],
+            [0, 0, escalaZ, 0],
+            [0, 0, 0, 1]]);
+        }
+
+        "--------------------------------------ESCENA CÁMARA Y PERSPECTIVA-----------------------------------------------------------"
+
+        //Función matriz perspectiva.        
+        function matrizPerspectiva(matriz) {
+            for (i = 0; i < matriz.length; i++) {
+                matriz[i][0] = matriz[i][0] / matriz[i][2];
+                matriz[i][1] = matriz[i][1] / matriz[i][2];
+            }
+            return matriz;
+        }
+
+        //Funcion calcular perspectiva.
+        function perspectiva(angulo, relacionAspecto, ZoomIn, ZoomOut) {
+            coTangente = 1 / Math.tan(angulo * Math.PI / 360);
+            return transponerMatriz([[coTangente / relacionAspecto, 0, 0, 0], [0, coTangente, 0, 0], [0, 0, (ZoomIn + ZoomOut) / (ZoomIn - ZoomOut), 2 * ZoomIn * ZoomOut / (ZoomOut - ZoomIn)], [0, 0, -1, 0]]);
+        }
+
+        //Función matriz visualización desde la camara.       
+        function camara(punto, normal, vertical) {
+            inversaTraslacion = traslacion(-punto[0], -punto[1], -punto[2]);
+            vector = [normal[0] - punto[0], normal[1] - punto[1], normal[2] - punto[2]];
+            norm = vectorNormal(vector);
+            n = [vector[0] / norm, vector[1] / norm, vector[2] / norm];
+            cruz = productoCruz(vertical, n);
+            norm = vectorNormal(vertical);
+            u = [cruz[0] / norm, cruz[1] / norm, cruz[2] / norm];
+            v = productoCruz(n, u);
+            resultado = transponerMatriz([[u[0], u[1], u[2], 0], [v[0], v[1], v[2], 0], [n[0], n[1], n[2], 0], [0, 0, 0, 1]]);
+            return productoPunto(inversaTraslacion, resultado);
+        }
+
+        //Función agregar una figura sobre el plano
+        function agregarFigura(escena, figura) {
+            for (i = 0; i < figura.vertices.length; i++) {
+                escena.vertices.push(figura.vertices[i]);
+            }
+            if (escena.indices.length != 0) {
+                maxIndices = Math.max(...escena.indices) + 1;
+            }
+            else {
+                maxIndices = 0;
+            }
+            for (i = 0; i < figura.indices.length; i++) {
+                escena.indices.push(figura.indices[i] + maxIndices);
+            }
+            return escena;
+        }
+
+        //Funcion agregar varias figuras sobre el plano en la escena.
+        function figurasEnEscena() {
+
+            //Plano base de las figuras.
+            plano = dibujarPlano(10);
+            matrizPlano = verticesMatrizPuntos(plano.vertices);
+            matrizPlano = productoPunto(matrizPlano, productoPunto(escalaMatriz(8, 8, 8), rotacionX(Math.PI / 2)));
+            plano.vertices = matrizPuntosVertices(matrizPlano);
+            escena = plano;
+
+            //Figura 1.
+            //ESFERA 1.
+            esfera = dibujarEsfera((2, 15), (2, 15));
+            matrizEsfera = verticesMatrizPuntos(esfera.vertices);
+            matrizEsfera = productoPunto(matrizEsfera, productoPunto(escalaMatriz(0.9, 0.9, 0.9), traslacion(1, 0.9, 0)));
+            esfera.vertices = matrizPuntosVertices(matrizEsfera);
+            escena = agregarFigura(escena, esfera);
+
+            //Figura 2.
+            //ESFERA 2.
+            esfera = dibujarEsfera((2, 15), (2, 15));
+            matrizEsfera = verticesMatrizPuntos(esfera.vertices);
+            matrizEsfera = productoPunto(matrizEsfera, productoPunto(escalaMatriz(0.9, 0.9, 0.9), traslacion(-1, 0.9, 0)));
+            esfera.vertices = matrizPuntosVertices(matrizEsfera);
+            escena = agregarFigura(escena, esfera);
+
+            //Figura 3.
+            //CONO 1.                 
+            cono = dibujarCono(15);
+            matrizCono = verticesMatrizPuntos(cono.vertices);
+            matrizCono = productoPunto(matrizCono, productoPunto(productoPunto(rotacion(Math.PI), rotacionY(Math.PI)), traslacion(0, 0.8, -4)));//traslación
+            cono.vertices = matrizPuntosVertices(matrizCono);
+            escena = agregarFigura(escena, cono);
+
+            //Figura 4.
+            //CONO 2.                       
+            cono = dibujarCono(15);
+            matrizCono = verticesMatrizPuntos(cono.vertices);
+            matrizCono = productoPunto(matrizCono, productoPunto(productoPunto(rotacion(Math.PI), rotacionY(Math.PI)), traslacion(0, 0.8, 4)));//traslación
+            cono.vertices = matrizPuntosVertices(matrizCono);
+            escena = agregarFigura(escena, cono);
+
+            //Figura 5.
+            //CUBO 1.
+            cubo = dibujarCubo();
+            matrizCubo = verticesMatrizPuntos(cubo.vertices);
+            matrizCubo = productoPunto(matrizCubo, traslacion(-4, -1, -3));
+            cubo.vertices = matrizPuntosVertices(matrizCubo);
+            escena = agregarFigura(escena, cubo);
+
+            //Figura 6.
+            //CUBO 2.
+            cubo = dibujarCubo();
+            matrizCubo = verticesMatrizPuntos(cubo.vertices);
+            matrizCubo = productoPunto(matrizCubo, traslacion(4, -1, 3));
+            cubo.vertices = matrizPuntosVertices(matrizCubo);
+            escena = agregarFigura(escena, cubo);
+
+        }
+
+        //Función principal.
+        function main() {
+
+            figurasEnEscena();
+
+            //Pintar Escena con vista desde la camara.
+            matrizEscena = verticesMatrizPuntos(escena.vertices);
+            matrizEscena = productoPunto(matrizEscena, escalaMatriz(0.2, 0.2, 0.2));
+
+            cont = 0;
+            for (i = 0; i < 500; i++) {
+
+                setTimeout(() => {
+
+                    contexto.clearRect(0, 0, 1000, 950);
+
+                    camaraPrincipal = camara([Math.cos(Math.PI * cont / 90), 1, Math.sin(Math.PI * cont / 90)], [0, 0, 0], [0, 0.9, 0]);//ortogonal 1
+
+                    camaraPerspectiva = perspectiva(60, 1, 1, 1);
+
+                    camaraVertices = matrizPuntosVertices(matrizPerspectiva(productoPunto(matrizEscena, productoPunto(camaraPrincipal, camaraPerspectiva))));
+                    camaraVertices = matrizPuntosVertices(productoPunto(matrizEscena, productoPunto(camaraPrincipal, camaraPerspectiva)));
+
+                    setInterval(dibujarTriangulos(camaraVertices, escena.indices), 0);
+                    cont++;
+                }, i * 100);
+            }
+        }
+
+    </script>
+</body>
+
+</html>
